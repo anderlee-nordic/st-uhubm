@@ -362,46 +362,38 @@ Auto-refresh
 Remote GUI access through SSH
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The recommended way to access the GUI remotely is to keep it bound to
-localhost and forward the port through SSH.
+Open an SSH connection with local port forwarding:
 
-On the remote Linux host connected to the hub, start the GUI:
+.. code-block:: bash
+
+   ssh -L 8080:127.0.0.1:8080 user@remote-host
+
+From the remote shell, start the GUI:
 
 .. code-block:: bash
 
    stuhubm-gui --host 127.0.0.1 --port 8080
 
-Keep that command running.
+Keep the SSH connection open and visit ``http://127.0.0.1:8080`` on the local
+computer.
 
-On the local computer, open an SSH tunnel to the remote host:
+Press ``Ctrl+C`` in the remote shell to stop the GUI. Then run ``exit`` to
+close the SSH connection and port forwarding.
 
-.. code-block:: bash
-
-   ssh -N -L 8080:127.0.0.1:8080 user@remote-host
-
-Replace ``user`` and ``remote-host`` with the SSH username and hostname or IP
-address of the remote system.
-
-Open this address in a browser on the local computer:
-
-.. code-block:: text
-
-   http://127.0.0.1:8080
-
-The browser connection is forwarded securely through SSH to the GUI running
-on the remote host.
-
-If local port ``8080`` is already in use, select another local port:
+To use a custom port, replace ``9000`` in both commands:
 
 .. code-block:: bash
 
-   ssh -N -L 9000:127.0.0.1:8080 user@remote-host
+   ssh -L 9000:127.0.0.1:9000 user@remote-host
 
-Then open:
+From the remote shell:
 
-.. code-block:: text
+.. code-block:: bash
 
-   http://127.0.0.1:9000
+   stuhubm-gui --host 127.0.0.1 --port 9000
+
+Then visit ``http://127.0.0.1:9000`` on the local computer. Press ``Ctrl+C``
+to stop the GUI, and run ``exit`` to close the SSH connection.
 
 Python API
 ----------
