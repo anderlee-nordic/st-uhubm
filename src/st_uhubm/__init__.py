@@ -1,21 +1,34 @@
-"""
-st-uhubm: Python wrapper for managing StarTech USB hub
+"""Python tools for controlling StarTech Managed Industrial USB Hubs.
 
-Wraps StarTech's proprietary ``cusbi`` / ``cusba`` binary,
+The package wraps StarTech's proprietary ``cusbi`` and ``cusba`` programs,
 which must be installed separately.
 
 Unofficial. Not affiliated with StarTech.com.
 """
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import (
+    PackageNotFoundError,
+    version,
+)
 
 try:
     __version__ = version("st-uhubm")
-except PackageNotFoundError:   # not installed (e.g. running from a raw checkout)
+except PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 
-from .cli_backend import Hub, HubManager, discover, parse_hub_info, parse_query_all
+from .cli_backend import (
+    Hub,
+    HubManager,
+    default_binary,
+    discover,
+    parse_hub_info,
+    parse_query_all,
+)
+from .device import (
+    IdentifiedDevice,
+    identify_devices,
+)
 from .errors import (
     BinaryNotFound,
     HubCommandError,
@@ -24,18 +37,19 @@ from .errors import (
     ManagedHubError,
 )
 
-__version__ = "0.1.0"
-
 __all__ = [
-    "Hub",
-    "HubManager",
-    "discover",
-    "parse_hub_info",
-    "parse_query_all",
-    "ManagedHubError",
     "BinaryNotFound",
+    "Hub",
     "HubCommandError",
+    "HubManager",
     "HubParseError",
     "HubTimeout",
+    "IdentifiedDevice",
+    "ManagedHubError",
     "__version__",
+    "default_binary",
+    "discover",
+    "identify_devices",
+    "parse_hub_info",
+    "parse_query_all",
 ]

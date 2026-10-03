@@ -4,15 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "st-uhubm"
-version = "0.1.0"
-description = "Manage StarTech Industrial USB Hubs from Python API, a CLI, and a web GUI. Unofficial."
+version = "1.0.0"
+description = "An unofficial toolset for controlling StarTech Managed Industrial USB Hubs on Linux."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-2.0-or-later" }
-authors = [{ name = "Ander Lee"}]
-keywords = ["usb", "hub", "startech", "testing", "switch", "embedded", "ci", "st-uhubm"]
+authors = [{ name = "Ander Lee" }]
+keywords = [
+    "usb",
+    "hub",
+    "startech",
+    "testing",
+    "switch",
+    "embedded",
+    "ci",
+    "st-uhubm",
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",

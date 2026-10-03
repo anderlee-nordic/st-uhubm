@@ -1,124 +1,124 @@
 # st-uhubm
 
-Manage **StarTech Managed Industrial USB Hubs** on Linux from Python, a CLI, or
-an optional web GUI.
+An unofficial toolset for controlling StarTech Managed Industrial USB Hubs on
+Linux.
 
-> **Unofficial.** Not affiliated with, endorsed by, or supported by StarTech.com.
-> "StarTech" is a trademark of its respective owner. This package wraps StarTech's
-> proprietary `cusbi` / `cusba` control binary, which user must obtain separately
-> and which is **not** redistributed here.
+Includes a Python library, command-line tool, and web GUI.
 
-Supported hardware: `5G7AINDRM-USB-A-HUB` (7-port) and `5G4AINDRM-USB-A-HUB`
-(4-port), firmware v04+. These hubs expose a serial control channel (enumerating
-as `/dev/ttyUSBn`); this is **not** _uhubctl_ or _PPPS_.
+Supported hubs:
+
+- `5G7AINDRM-USB-A-HUB` — 7 ports
+- `5G4AINDRM-USB-A-HUB` — 4 ports
+- Firmware v04 or newer
+
+Supported device identification:
+
+- SEGGER J-Link
+- Nordic Power Profiler Kit II (PPK2)
+
+> This project is not affiliated with, endorsed by, or supported by
+> StarTech.com.
+>
+> StarTech's proprietary `cusbi` and `cusba` programs are not included.
 
 ## Install
 
 ```bash
-pip install st-uhubm            # library + CLI
-pip install "st-uhubm[gui]"     # also the web GUI
+python3 -m pip install st-uhubm
 ```
 
-Then install StarTech's binary separately (from the product's 'Drivers & Downloads'
-page) and put `cusbi` (x86) or `cusba` (ARM) on `PATH`. See the
-[user manual](https://st-uhubm.readthedocs.io/) for details.
-
-## Quick start
+Install with the optional web GUI:
 
 ```bash
-stuhubm health                 # check the binary is found, list hubs
-stuhubm list                   # discover hubs
-stuhubm status /dev/ttyUSB0    # show port states
-stuhubm off /dev/ttyUSB0 3,4   # turn ports 3 and 4 off
-stuhubm on  /dev/ttyUSB0 3     # turn port 3 on
-stuhubm save /dev/ttyUSB0      # persist current states to flash
+python3 -m pip install "st-uhubm[gui]"
 ```
 
-Python:
+Download the StarTech Linux control program from the product's
+**Drivers & Downloads** page and place it on `PATH`:
+
+- `cusbi` on x86 and x86-64
+- `cusba` on ARM and AArch64
+
+## Command line
+
+```bash
+stuhubm health
+stuhubm list
+stuhubm status /dev/ttyUSB0
+
+stuhubm off /dev/ttyUSB0 3
+stuhubm on /dev/ttyUSB0 3
+
+stuhubm off /dev/ttyUSB0 2,3,4
+stuhubm on /dev/ttyUSB0 all
+```
+
+JSON output:
+
+```bash
+stuhubm --json status /dev/ttyUSB0
+```
+
+Custom control-program path:
+
+```bash
+stuhubm --binary /opt/startech/cusbi health
+```
+
+## Web GUI
+
+```bash
+stuhubm-gui
+```
+
+Open <http://127.0.0.1:8080>.
+
+Use another address or port:
+
+```bash
+stuhubm-gui --host 0.0.0.0 --port 9000
+```
+
+## Python API
 
 ```python
 from st_uhubm import discover
 
 hub = discover()[0]
-hub.set_port(4, on=False)    # power-cycle a device under test
+
+hub.set_port(4, on=False)
 hub.set_port(4, on=True)
+
+for port in range(1, hub.n_ports + 1):
+    for device in hub.identified_devices(port):
+        print(port, device.product, device.serial)
 ```
 
-GUI:
+## Device identification
 
-```bash
-stuhubm-gui                    # http://localhost:8080
-```
+Device identification uses Linux sysfs and requires no additional Python
+package.
 
-## Why
+Currently recognized:
 
-Built for embedded testing / CI use: power-cycling DUT from a pipeline.
-The parsing (hub discovery output, the little-endian port bitmap) lives in
-pure text processing functions, so behavior is predictable and the logic is
-easy to test without hardware.
+- SEGGER devices with USB vendor ID `1366`
+- Nordic PPK2 devices with USB ID `1915:c00a`
 
-## Project layout
+The application accounts for the internal cascaded USB topology of supported
+seven-port hubs and associates identified devices with managed ports.
 
-```
-src/st_uhubm/
-    __init__.py      # public API
-    errors.py        # exception hierarchy
-    cli_backend.py   # parsers + HubManager/Hub + subprocess wrapper
-    cli.py           # `stuhubm` Click CLI
-    gui.py           # `stuhubm-gui` NiceGUI app (optional [gui] extra)
-docs/                # Sphinx docs
-```
+## Permissions
 
-## Development
+The StarTech control program normally requires permission to access the hub's
+control device, such as `/dev/ttyUSB0`.
 
-```bash
-pip install -e ".[gui,docs]"
-python -m sphinx -b html docs docs/_build/html   # build the docs locally
-```
-
-### Releasing
- 
-Releases are automated: pushing a `vX.Y.Z` tag builds and publishes to PyPI via
-Trusted Publishing (OIDC — no API token in secrets), and Read the Docs rebuilds
-on push.
- 
-One-time setup (done once per project): a PyPI *pending publisher* for
-`st-uhubm` (workflow `release.yml`, environment `pypi`), a GitHub environment
-named `pypi`, and the Read the Docs project import.
- 
-To cut a release:
- 
-1. Update `CHANGELOG.md` — add a `## [X.Y.Z] - YYYY-MM-DD` section.
-2. Bump the version in `pyproject.toml` (`src/st_uhubm/__init__.py` will
-   update based on the installed metadata.
-3. Commit the changes.
-4. Tag and push:
-```bash
-   git tag vX.Y.Z
-   git push origin main --tags
-```
- 
-5. The **Publish to PyPI** workflow runs on the tag, builds the sdist + wheel,
-   and uploads it. Watch the Actions tab (the `publish` job pauses for approval
-   if the `pypi` environment has required reviewers).
-6. Verify at <https://pypi.org/project/st-uhubm/>, then `pip install st-uhubm`.
-7. Read the Docs rebuilds `latest` automatically on the push; optionally
-   activate the `vX.Y.Z` version in the RTD dashboard for versioned docs.
-
-Notes:
- 
-- The tag must match the version (`v0.1.0` ↔ `0.1.0`).
-- A version can never be re-published to PyPI — if a release is broken, bump the
-  patch version and tag again.
-
-## Documentation
-
-Full manual and auto-generated API reference:
-[Read the Docs](https://st-uhubm.readthedocs.io/)
-(source: [docs/USER_MANUAL.rst](docs/USER_MANUAL.rst)).
+By default, `st-uhubm` runs the program through `sudo`. To run without `sudo`,
+grant the user access to the device.
 
 ## License
 
-This code is licensed under the GNU General Public License, version 2 or later
-(GPL-2.0-or-later). StarTech's `cusbi`/`cusba` binary is not included and
-remains the property of StarTech.com under its own terms.
+This project is licensed under the GNU General Public License, version 2 or
+later (`GPL-2.0-or-later`).
+
+StarTech's `cusbi` and `cusba` programs are not included and remain subject to
+StarTech's own license terms.

@@ -1,482 +1,612 @@
-st-uhubm
-========
+st-uhubm User Manual
+====================
 
-A Python library, command-line tool, and web GUI for managing
-**StarTech Managed Industrial USB Hubs** on Linux.
+Overview
+--------
 
-   **Unofficial.** This project is not affiliated with, endorsed by, or supported
-   by StarTech.com. "StarTech" is a trademark of its respective owner. This
-   package is a wrapper around StarTech's own ``cusbi`` / ``cusba`` binary,
-   which you must obtain separately (see `Prerequisites <#prerequisites>`__).
-   The binary is proprietary and is **not** redistributed here.
+``st-uhubm`` is an unofficial toolset for controlling StarTech Managed
+Industrial USB Hubs on Linux.
 
+It includes a Python library, command-line tool, and web GUI.
+
+It provides hub discovery, individual USB port control, status reporting, and
+identification of supported devices connected to managed ports.
+
+Supported identified devices include:
+
+* SEGGER J-Link devices;
+* Nordic Power Profiler Kit II (PPK2) devices.
+
+.. note::
+
+   This project is not affiliated with, endorsed by, or supported by
+   StarTech.com.
+
+   StarTech's proprietary ``cusbi`` and ``cusba`` programs are not included
+   and must be obtained separately.
+
+Supported hubs
 --------------
 
-What is it
+The following hubs are supported:
+
+======================= ===== ======================
+Model                   Ports Minimum firmware
+======================= ===== ======================
+``5G7AINDRM-USB-A-HUB`` 7     v04
+``5G4AINDRM-USB-A-HUB`` 4     v04
+======================= ===== ======================
+
+Each hub exposes a serial control interface, normally named
+``/dev/ttyUSB0`` or another ``/dev/ttyUSB<n>`` device.
+
+Requirements
 ------------
 
-StarTech's USB hubs expose a serial control channel (it enumerates as
-``/dev/ttyUSB<n>``) that lets user switches individual downstream ports on and off,
-reboot the hub, and persist a default port state. StarTech ships a control
-binary (``cusbi`` on x86/AMD64, ``cusba`` on ARM) to drive that channel.
+``st-uhubm`` requires:
 
-``st-uhubm`` wraps that binary with:
+* Linux;
+* Python 3.10 or newer;
+* a supported StarTech managed USB hub;
+* StarTech's ``cusbi`` or ``cusba`` control program;
+* permission to access the hub's serial control interface.
 
-- a **Python API** for scripting and integration;
-- a **``stuhubm`` CLI** with subcommands and optional JSON output;
-- an optional **``stuhubm-gui``** NiceGUI web GUI with port toggles.
+Control program
+~~~~~~~~~~~~~~~
 
-Supported hardware
-------------------
+Download the Linux control program from the **Drivers & Downloads** section
+of the StarTech product page.
 
-======================= ===== =============================
-Model                   Ports Notes
-======================= ===== =============================
-``5G7AINDRM-USB-A-HUB`` 7     7-port managed industrial hub
-``5G4AINDRM-USB-A-HUB`` 4     4-port managed industrial hub
-======================= ===== =============================
+Use:
 
-Multiple hubs (including daisy-chained units) on one host are supported; each
-gets its own control port. Firmware **v04 or newer** is required.
+* ``cusbi`` on x86 and x86-64 systems;
+* ``cusba`` on ARM and AArch64 systems.
 
-   This package controls hubs via StarTech's serial protocol. It is **not**
-   ``uhubctl`` and does not use USB per-port power switching (PPPS). The two are
-   different projects.
+Install the program somewhere on ``PATH``:
 
-Prerequisites
--------------
+.. code-block:: bash
 
-1. **Python 3.10 or newer.**
-2. **The StarTech binary**, obtained from StarTech (see below). The
-   correct binary for user's CPU:
+   sudo install -m 0755 cusbi /usr/local/bin/cusbi
 
-   - ``cusbi`` — Intel/AMD (x86-64) Linux hosts
-   - ``cusba`` — ARM Linux hosts (e.g. Raspberry Pi, most SBCs)
+On ARM:
 
-3. **Root access.** The binary opens the control tty directly and requires root.
-   Run as root, use ``sudo``, or grant access to the device via a udev rule /
-   group membership (see `Running without root <#running-without-root>`__).
+.. code-block:: bash
 
-Obtaining the vendor binary
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   sudo install -m 0755 cusba /usr/local/bin/cusba
 
-This package does not redistribute StarTech's proprietary binary. To obtain it:
-
-1. Go to the product page for your model
-   (``startech.com/5G7AINDRM-USB-A-HUB`` or ``startech.com/5G4AINDRM-USB-A-HUB``)
-   and open the **Drivers & Downloads** tab.
-
-2. Download the Linux package (a tarball such as ``cusbi-r1.02.tar.gz``).
-
-3. Extract it and place the binary somewhere on your ``PATH``, e.g.:
-
-   .. code:: bash
-
-      tar xzf cusbi-r1.02.tar.gz
-      sudo install -m 0755 cusbi /usr/local/bin/cusbi
-
-   On ARM, do the same with ``cusba``.
-
-Verify the package can see it:
-
-.. code:: bash
-
-   stuhubm health
+The appropriate program is selected automatically. It can be overridden with
+``--binary`` or the ``STUHUBM_BINARY`` environment variable.
 
 Installation
 ------------
 
-Core library and CLI:
+Install the library and command-line tool:
 
-.. code:: bash
+.. code-block:: bash
 
-   pip install st-uhubm
+   python3 -m pip install st-uhubm
 
-With the web GUI:
+Install with the optional web GUI:
 
-.. code:: bash
+.. code-block:: bash
 
-   pip install "st-uhubm[gui]"
+   python3 -m pip install "st-uhubm[gui]"
 
-As an isolated tool (recommended for CLI-only use):
+Verify the installation:
 
-.. code:: bash
+.. code-block:: bash
 
-   pipx install st-uhubm
-   # or
-   uv tool install st-uhubm
-
-Installing the package does **not** install the StarTech binary, that is a
-separate manual step (see `Prerequisites <#prerequisites>`__).
-
-Quick start
------------
-
-.. code:: bash
-
-   # 1. Confirm the binary is working and list hubs
    stuhubm health
 
-   # 2. Discover connected hubs
+Command-line interface
+----------------------
+
+Discovery
+~~~~~~~~~
+
+Discover connected hubs:
+
+.. code-block:: bash
+
    stuhubm list
 
-   # 3. Show the port states of a hub
+Check the installation and detected hubs:
+
+.. code-block:: bash
+
+   stuhubm health
+
+Status
+~~~~~~
+
+Show the state of every port:
+
+.. code-block:: bash
+
    stuhubm status /dev/ttyUSB0
 
-   # 4. Turn port 3 off, then back on
+The output includes identified J-Link and PPK2 devices when available.
+
+Port control
+~~~~~~~~~~~~
+
+Turn one port off and on:
+
+.. code-block:: bash
+
    stuhubm off /dev/ttyUSB0 3
-   stuhubm on  /dev/ttyUSB0 3
+   stuhubm on /dev/ttyUSB0 3
 
-   # 5. Turn several ports off at once
-   stuhubm off /dev/ttyUSB0 3,4,5
+Control several ports:
 
-   # 6. Persist the current state so it survives a power cycle
-   stuhubm save /dev/ttyUSB0
+.. code-block:: bash
 
-If ``sudo`` prompts for a password on each call, see
-`Running without root <#running-without-root>`__.
+   stuhubm off /dev/ttyUSB0 2,3,4
+   stuhubm on /dev/ttyUSB0 2,3,4
 
-Core concepts
--------------
+Control every port:
 
-**Control port.** Each hub is addressed by the serial device it enumerates as.
-Pass exactly what ``stuhubm list`` reports for the hub, e.g. ``/dev/ttyUSB0``.
+.. code-block:: bash
 
-**Ports.** Downstream USB-A ports are numbered from 1. User can act on a single
-port (``3``), a comma-separated list (``3,4,5``), or all ports (``all``).
+   stuhubm off /dev/ttyUSB0 all
+   stuhubm on /dev/ttyUSB0 all
 
-**Port state.** Each port is simply **on** or **off**. ``stuhubm status`` reports
-the current state of every port.
+Toggle ports:
 
-**Volatile vs. persistent.** By default, changes are *volatile* — they apply
-immediately but are lost when the hub loses power or is reset. To make a state
-the power-on default, either:
+.. code-block:: bash
 
-- pass ``--persist`` (writes each change straight to the hub's flash), or
-- make your changes volatile, then run ``stuhubm save`` once to commit the
-  current state to flash.
+   stuhubm toggle /dev/ttyUSB0 2,3
 
-Prefer the second pattern for test rigs: it avoids a flash write on every toggle.
+JSON output
+~~~~~~~~~~~
 
-**Password.** Hubs ship with the default password ``pass``. While the password is
-unchanged from default, you do **not** need to supply it. Once you set a custom
-password, every state-changing command must include it (via ``--password`` or the
-``STUHUBM_PASSWORD`` environment variable). Passwords are at most 8 characters.
+Use ``--json`` for machine-readable output:
 
-Command-line interface (``stuhubm``)
-------------------------------------
+.. code-block:: bash
 
-General form:
-
-::
-
-   stuhubm [global options] <command> [arguments]
-
-Commands
-~~~~~~~~
-
-+----------------------------+-----------------------------------------+
-| Command                    | Description                             |
-+============================+=========================================+
-| ``health``                 | Check that the binary is present and    |
-|                            | list detected hubs                      |
-+----------------------------+-----------------------------------------+
-| ``list``                   | Discover hubs and show control port,    |
-|                            | model, serial, port count, firmware     |
-+----------------------------+-----------------------------------------+
-| ``status PORT``            | Show on/off state of every port on a    |
-|                            | hub                                     |
-+----------------------------+-----------------------------------------+
-| ``on PORT PORTS``          | Turn the given port(s) on               |
-+----------------------------+-----------------------------------------+
-| ``off PORT PORTS``         | Turn the given port(s) off              |
-+----------------------------+-----------------------------------------+
-| ``toggle PORT PORTS``      | Invert the given port(s)                |
-+----------------------------+-----------------------------------------+
-| ``all PORT on\|off``       | Turn all ports on or off                |
-+----------------------------+-----------------------------------------+
-| ``save PORT``              | Save current port states to flash       |
-|                            | (power-on default)                      |
-+----------------------------+-----------------------------------------+
-| ``reset PORT``             | Hardware-reset the hub                  |
-+----------------------------+-----------------------------------------+
-| ``restore PORT``           | Restore factory defaults (all ports on, |
-|                            | password ``pass``)                      |
-+----------------------------+-----------------------------------------+
-| ``passwd PORT``            | Change the hub password (prompts        |
-|                            | interactively)                          |
-+----------------------------+-----------------------------------------+
-
-``PORTS`` is a single port (``3``), a comma-separated list (``3,4,5``), or
-``all``.
-
-Global options
-~~~~~~~~~~~~~~
-
-+-------------------+----------------------+-----------------+------------------+
-| Option            | Env var              | Default         | Meaning          |
-+===================+======================+=================+==================+
-| ``--binary PATH`` | ``STUHUBM_BINARY``   | ``cusbi``       | Control binary   |
-|                   |                      |                 | name or full     |
-|                   |                      |                 | path             |
-+-------------------+----------------------+-----------------+------------------+
-| ``--sudo`` /      | ``STUHUBM_SUDO``     | ``--sudo``      | Run the binary   |
-| ``--no-sudo``     |                      |                 | via ``sudo``     |
-+-------------------+----------------------+-----------------+------------------+
-| ``--password PW`` | ``STUHUBM_PASSWORD`` | *(none)*        | Hub password, if |
-|                   |                      |                 | changed from     |
-|                   |                      |                 | default          |
-+-------------------+----------------------+-----------------+------------------+
-| ``--persist``     | ``STUHUBM_PERSIST``  | off             | Write changes to |
-|                   |                      |                 | flash            |
-|                   |                      |                 | immediately      |
-+-------------------+----------------------+-----------------+------------------+
-| ``--json``        | —                    | off             | Emit             |
-|                   |                      |                 | machine-readable |
-|                   |                      |                 | JSON instead of  |
-|                   |                      |                 | text             |
-+-------------------+----------------------+-----------------+------------------+
-| ``--timeout N``   | —                    | ``10``          | Per-command      |
-|                   |                      |                 | timeout in       |
-|                   |                      |                 | seconds          |
-+-------------------+----------------------+-----------------+------------------+
-| ``--verbose``     | —                    | off             | Print the exact  |
-|                   |                      |                 | binary           |
-|                   |                      |                 | invocation       |
-+-------------------+----------------------+-----------------+------------------+
-
-Examples
-~~~~~~~~
-
-.. code:: bash
-
-   # Use the ARM binary at a specific path, no sudo (already root)
-   stuhubm --binary /opt/startech/cusba --no-sudo list
-
-   # JSON output for scripting
    stuhubm --json status /dev/ttyUSB0
-   # -> {"port": "/dev/ttyUSB0", "model": "7-port Managed USB Hub",
-   #     "serial": "00020000149E", "firmware": "v04", "n_ports": 7,
-   #     "states": {"1": true, "2": true, "3": false, ...}}
 
-   # Make port 1 the only powered port and persist it
-   stuhubm all /dev/ttyUSB0 off
-   stuhubm on  /dev/ttyUSB0 1
+Example:
+
+.. code-block:: json
+
+   {
+     "port": "/dev/ttyUSB0",
+     "model": "7-port Managed USB Hub",
+     "serial": "00020000149E",
+     "firmware": "v04",
+     "n_ports": 7,
+     "states": {
+       "1": true,
+       "2": true,
+       "3": true,
+       "4": true,
+       "5": true,
+       "6": true,
+       "7": true
+     },
+     "identified_devices": {
+       "2": [
+         {
+           "serial": "1051129184",
+           "product": "J-Link",
+           "manufacturer": "SEGGER",
+           "sysfs_name": "1-13.2",
+           "vendor_id": "1366",
+           "product_id": "1069",
+           "device_type": "SEGGER J-Link"
+         }
+       ]
+     }
+   }
+
+Control-program selection
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use a custom executable path:
+
+.. code-block:: bash
+
+   stuhubm --binary /opt/startech/cusbi health
+
+Or set the path through the environment:
+
+.. code-block:: bash
+
+   export STUHUBM_BINARY=/opt/startech/cusbi
+   stuhubm health
+
+The default program is:
+
+* ``cusbi`` on x86 and x86-64;
+* ``cusba`` on ARM and AArch64.
+
+Permissions
+~~~~~~~~~~~
+
+The control program normally needs permission to access the hub's serial
+interface.
+
+By default, ``st-uhubm`` runs the program through ``sudo``.
+
+To run without ``sudo``:
+
+.. code-block:: bash
+
+   stuhubm --no-sudo status /dev/ttyUSB0
+
+Running without ``sudo`` requires suitable device permissions.
+
+Passwords
+~~~~~~~~~
+
+Supply a custom hub password:
+
+.. code-block:: bash
+
+   stuhubm --password secret status /dev/ttyUSB0
+
+The password can also be supplied through the environment:
+
+.. code-block:: bash
+
+   export STUHUBM_PASSWORD=secret
+
+Change the password interactively:
+
+.. code-block:: bash
+
+   stuhubm passwd /dev/ttyUSB0
+
+Other hub operations
+~~~~~~~~~~~~~~~~~~~~
+
+Reset the hub:
+
+.. code-block:: bash
+
+   stuhubm reset /dev/ttyUSB0
+
+Restore factory defaults:
+
+.. code-block:: bash
+
+   stuhubm restore /dev/ttyUSB0
+
+Save the current port states to hub flash:
+
+.. code-block:: bash
+
    stuhubm save /dev/ttyUSB0
 
-   # Power-cycle a device on port 4 (off, wait, on)
-   stuhubm off /dev/ttyUSB0 4 && sleep 3 && stuhubm on /dev/ttyUSB0 4
+Use ``--persist`` to remember each port change after the hub loses power:
 
-Run any ``stuhubm`` command with ``--verbose`` to print the exact invocation.
+.. code-block:: bash
+
+   stuhubm --persist off /dev/ttyUSB0 3
+
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+====================== ===============================================
+Variable               Purpose
+====================== ===============================================
+``STUHUBM_BINARY``      Control-program name or path
+``STUHUBM_SUDO``        Enable or disable execution through ``sudo``
+``STUHUBM_PASSWORD``    Custom hub password
+``STUHUBM_PERSIST``     Remember each change after hub power-off
+====================== ===============================================
+
+Boolean environment variables accept values such as ``1``, ``true``, ``yes``,
+and ``on``.
 
 Exit codes
 ~~~~~~~~~~
 
-===== ======================================================
+===== =======================================
 Code  Meaning
-===== ======================================================
-``0`` Success
-``1`` Command failed (non-zero from the binary, parse error)
-``2`` Usage error (bad arguments)
-``3`` Binary not found
-``4`` Timeout
-===== ======================================================
+===== =======================================
+0     Success
+1     Hub command or parsing failure
+2     Invalid command-line usage
+3     StarTech control program not found
+4     Command timeout
+===== =======================================
 
-Web GUI (``stuhubm-gui``)
--------------------------
+Web GUI
+-------
 
-Requires the ``[gui]`` extra.
+Install the GUI extra:
 
-.. code:: bash
+.. code-block:: bash
 
-   stuhubm-gui                       # serves on http://localhost:8080
-   stuhubm-gui --port 9000           # custom port
-   stuhubm-gui --native              # desktop window (requires pywebview)
+   python3 -m pip install "st-uhubm[gui]"
 
-The GUI provides hub discovery, a switch per port reflecting live state,
-all-on/all-off, save-to-flash, reset, restore, and a password-change dialog —
-plus a console pane showing the exact binary invocation and its output for every
-action. Settings (binary path, sudo, password, persist) are editable in-page.
-Each browser tab is independent, and a process-wide lock serialize the actual
-hardware calls so two tabs never issue overlapping commands.
+Start the GUI:
 
-The GUI is just a convenience layer; everything it does is also available through the
-CLI and the Python API.
+.. code-block:: bash
+
+   stuhubm-gui
+
+Open the following address in a web browser:
+
+.. code-block:: text
+
+   http://127.0.0.1:8080
+
+Use another address or port:
+
+.. code-block:: bash
+
+   stuhubm-gui --host 0.0.0.0 --port 9000
+
+GUI settings
+~~~~~~~~~~~~
+
+Binary
+   The StarTech control-program name or full path.
+
+Use sudo
+   Run the control program through ``sudo``.
+
+Hub password
+   The custom hub password. Leave this blank when the default password is in
+   use.
+
+Remember port changes after hub power-off
+   Write each port change to hub flash.
+
+Auto-refresh
+   Rediscover hubs and identified devices every five seconds.
+
+Remote GUI access through SSH
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The recommended way to access the GUI remotely is to keep it bound to
+localhost and forward the port through SSH.
+
+On the remote Linux host connected to the hub, start the GUI:
+
+.. code-block:: bash
+
+   stuhubm-gui --host 127.0.0.1 --port 8080
+
+Keep that command running.
+
+On the local computer, open an SSH tunnel to the remote host:
+
+.. code-block:: bash
+
+   ssh -N -L 8080:127.0.0.1:8080 user@remote-host
+
+Replace ``user`` and ``remote-host`` with the SSH username and hostname or IP
+address of the remote system.
+
+Open this address in a browser on the local computer:
+
+.. code-block:: text
+
+   http://127.0.0.1:8080
+
+The browser connection is forwarded securely through SSH to the GUI running
+on the remote host.
+
+If local port ``8080`` is already in use, select another local port:
+
+.. code-block:: bash
+
+   ssh -N -L 9000:127.0.0.1:8080 user@remote-host
+
+Then open:
+
+.. code-block:: text
+
+   http://127.0.0.1:9000
 
 Python API
 ----------
 
-The library mirrors the CLI. A short example:
+Discover hubs
+~~~~~~~~~~~~~
 
-.. code:: python
+.. code-block:: python
 
-   from st_uhubm import HubManager, discover
+   from st_uhubm import discover
 
-   # Convenience: discover with default settings (cusbi, sudo on)
-   for hub in discover():
-       print(hub.port, hub.model, hub.firmware, hub.states)
+   hubs = discover()
 
-   # Explicit configuration
-   mgr = HubManager(binary="cusba", use_sudo=False, password="s3cret")
-   hub = mgr.hub("/dev/ttyUSB0")            # read one known hub
+   for hub in hubs:
+       print(hub.port)
+       print(hub.model)
+       print(hub.serial)
+       print(hub.states)
 
-   hub.set_port(3, on=False)                # volatile by default
-   hub.set_port(3, on=True, persist=True)   # write straight to flash
+Control ports
+~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   from st_uhubm import discover
+
+   hub = discover()[0]
+
+   hub.set_port(3, on=False)
+   hub.set_port(3, on=True)
+
+Control multiple ports:
+
+.. code-block:: python
+
+   hub.set_ports([2, 3, 4], on=False)
+   hub.set_ports([2, 3, 4], on=True)
+
+Control every port:
+
+.. code-block:: python
+
    hub.set_all(on=False)
-   hub.toggle(2)
-   hub.save()                               # commit current states to flash
-   hub.refresh()                            # re-read live state
-   print(hub.is_on(3))
+   hub.set_all(on=True)
 
-The parsers are also importable for custom integrations or for testing the
-tricky logic without hardware:
+Read state
+~~~~~~~~~~
 
-.. code:: python
+.. code-block:: python
 
-   from st_uhubm.cli_backend import parse_query_all, parse_hub_info
+   hub.refresh()
 
-   parse_query_all("0002,/dev/ttyUSB0,/dev/ttyUSB1")
-   parse_hub_info("FBFFFFFF,7,v04,00020000149E,7-port Managed USB Hub")
+   for port in range(1, hub.n_ports + 1):
+       print(port, hub.is_on(port))
 
-The port-state bitmap is 32 bits, little-endian by byte; bit *n*\ −1 corresponds
-to port *n* (``1`` = on).
+Identify attached devices
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Further details: every class, method, parser, and exception are in the
-:doc:`API reference <api>`, generated directly from the source.
+Use ``identified_devices(port)`` to retrieve supported devices connected to a
+managed port:
 
-Configuration
--------------
+.. code-block:: python
 
-Settings resolve in this order (later overrides earlier):
+   from st_uhubm import discover
 
-1. Built-in defaults
-2. Environment variables (``STUHUBM_BINARY``, ``STUHUBM_SUDO``,
-   ``STUHUBM_PASSWORD``, ``STUHUBM_PERSIST``)
-3. Command-line flags (CLI) or ``HubManager`` arguments (API)
+   hub = discover()[0]
 
-This makes CI configuration straightforward: set the environment once, then call
-plain commands.
+   for port in range(1, hub.n_ports + 1):
+       for device in hub.identified_devices(port):
+           print(
+               port,
+               device.device_type,
+               device.product,
+               device.serial,
+           )
 
-Use in CI automation
-----------------------
+Refresh device information:
 
-Typical pattern: power-cycle a DUT between stages:
+.. code-block:: python
 
-.. code:: yaml
+   hub.refresh_device_identification()
 
-   # Example CI step (any runner with the hub attached)
-   env:
-     STUHUBM_BINARY: /opt/startech/cusbi
-     STUHUBM_SUDO: "1"
-   steps:
-     - run: stuhubm health
-     - run: stuhubm off /dev/ttyUSB0 4         # cut power to the DUT
-     - run: sleep 3
-     - run: stuhubm on  /dev/ttyUSB0 4         # power back on
-     - run: stuhubm --json status /dev/ttyUSB0 # record final state
+Direct identification
+~~~~~~~~~~~~~~~~~~~~~
 
-For unattended use, configure passwordless ``sudo`` scoped to the binary so calls
-never block on a prompt (see below), or run the job as root.
+Run device identification without creating a ``Hub`` object:
 
-Because the parsing functions are pure text processing, user can cover the tricky logic in 
-their own unit tests without any hardware attached:
+.. code-block:: python
 
-.. code:: python
+   from st_uhubm import identify_devices
 
-   from st_uhubm.cli_backend import parse_hub_info
+   devices_by_port = identify_devices(
+       "/dev/ttyUSB0",
+       n_ports=7,
+   )
 
-   def test_port3_off():
-       n, states, fw, serial, model = parse_hub_info(
-           "FBFFFFFF,7,v04,00020000149E,7-port Managed USB Hub")
-       assert states[3] is False
-       assert n == 7
+   for port, devices in devices_by_port.items():
+       for device in devices:
+           print(port, device.display_name)
 
-Troubleshooting
----------------
+Manager configuration
+~~~~~~~~~~~~~~~~~~~~~
 
-Binary not found
-~~~~~~~~~~~~~~~~
+Use ``HubManager`` for explicit configuration:
 
-``stuhubm health`` reports the binary cannot be located. Confirm the file is on
-``PATH`` or pass ``--binary /full/path/to/cusbi``. On ARM hosts, ensure you are
-using ``cusba``, not ``cusbi``.
+.. code-block:: python
 
-No hubs detected
-~~~~~~~~~~~~~~~~
+   from st_uhubm import HubManager
 
-- Check the cable :)
-- Confirm the device node exists: ``ls /dev/ttyUSB*``.
-- Make sure the hub is externally powered if your model/setup requires it.
-- Try ``stuhubm --verbose list`` to see the raw discovery output.
+   manager = HubManager(
+       binary="cusbi",
+       use_sudo=True,
+       password="",
+       persist=False,
+       timeout=10,
+   )
 
-Permission denied / sudo prompts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   hub = manager.hub("/dev/ttyUSB0")
+   print(hub.states)
 
-The binary needs root to open the control tty.
+Device identification
+---------------------
 
-Running without root
-^^^^^^^^^^^^^^^^^^^^
+Implementation
+~~~~~~~~~~~~~~
 
-To avoid ``sudo`` entirely, grant your user access to the control device with a
-udev rule. Identify the device's vendor/product, then add (example):
+Device identification is implemented in ``st_uhubm.device``.
 
-::
+The public types and functions are:
 
-   # /etc/udev/rules.d/99-startech-hub.rules
-   SUBSYSTEM=="tty", ATTRS{idVendor}=="XXXX", ATTRS{idProduct}=="YYYY", MODE="0660", GROUP="dialout"
+* ``IdentifiedDevice``;
+* ``identify_devices()``;
+* ``Hub.identified_devices(port)``;
+* ``Hub.refresh_device_identification()``.
 
-Reload rules (``sudo udevadm control --reload && sudo udevadm trigger``), add your
-user to the ``dialout`` group, re-login, and run with ``--no-sudo``.
+Identification uses Linux sysfs:
 
-Alternatively, allow passwordless ``sudo`` for just the binary in
-``/etc/sudoers.d/``::
+.. code-block:: text
 
-   youruser ALL=(root) NOPASSWD: /usr/local/bin/cusbi
+   /sys/bus/usb/devices
+   /sys/class/tty
 
-A port powers back on by itself
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+No J-Link library, ``nrfutil``, or additional Python package is required.
 
-Some kernel drivers re-initialize a device shortly after a state change. If a
-port you turned off comes back, persist the desired state (``--persist`` or
-``stuhubm save``) so the hub re-applies it, and verify with ``stuhubm status``.
+Supported devices
+~~~~~~~~~~~~~~~~~
 
-Forgotten password
-~~~~~~~~~~~~~~~~~~
+The following devices are currently recognized:
 
-If you set a password and lost it, use the physical recovery procedure in the
-StarTech hardware manual (power off, hold the button, power on) to restore
-factory defaults, which resets the password to ``pass``.
+===================== ============ =================
+Device                Vendor ID    Product ID
+===================== ============ =================
+SEGGER J-Link         ``1366``     Any
+Nordic PPK2           ``1915``     ``c00a``
+===================== ============ =================
 
-Caveats
-------------------
+An ``IdentifiedDevice`` contains:
 
-- **Flash wear.** ``--persist`` (the ``/F`` path) writes flash on every change.
-  For frequently-toggled test rigs, make changes volatile and ``save`` once.
-- **Power-cycling live devices.** Cutting a port drops the device immediately.
-  Ensure nothing is mid-write (e.g. mass storage) before switching a port off.
-- **Root.** The binary runs with elevated privileges; review the ``--verbose``
-  output if you need to audit exactly what is executed.
-- **Compatibility.** This package targets firmware v04+ output of the StarTech
-  binary. If StarTech changes the binary's output format in a future revision,
-  parsing may need updating; ``stuhubm --verbose`` and the exposed parser
-  functions make this easy to diagnose.
+``serial``
+   The normalized J-Link serial number or PPK2 CDC ID.
 
-Support
-----------------------
+``product``
+   The USB product name.
 
-The public API is everything exported from the top-level ``st_uhubm`` package;
-internal module layout may change between minor versions.
+``manufacturer``
+   The USB manufacturer name.
 
-This is community software provided as-is. For issues with the **hub hardware or
-the StarTech binary itself**, contact StarTech support. Those are outside the
-scope of this package.
+``sysfs_name``
+   The Linux USB topology identifier.
+
+``vendor_id``
+   The USB vendor ID.
+
+``product_id``
+   The USB product ID.
+
+``device_type``
+   A normalized category such as ``SEGGER J-Link`` or ``Nordic PPK2``.
+
+Seven-port topology
+~~~~~~~~~~~~~~~~~~~
+
+The supported seven-port hub contains an internal cascaded hub controller.
+
+The confirmed mapping is:
+
+======================= ====================
+Linux route             Managed port
+======================= ====================
+Outer port ``1``        1
+Outer port ``2``        2
+Outer port ``3``        3
+Inner route ``4.1``     4
+Inner route ``4.2``     5
+Inner route ``4.3``     6
+Inner route ``4.4``     Control interface
+======================= ====================
+
+The control interface is not returned as an identified attached device.
 
 License
 -------
 
-This package is released under the **GNU General Public License, version 2 or
-later** (GPL-2.0-or-later). See the ``LICENSE`` file for the version 2 text.
- 
-It does not include or redistribute any StarTech software; the ``cusbi`` /
-``cusba`` binary is the property of StarTech.com and is governed by StarTech's
-own license terms. The GPL applies only to this project's own code.
+``st-uhubm`` is licensed under the GNU General Public License, version 2 or
+later (GPL-2.0-or-later).
+
+StarTech's ``cusbi`` and ``cusba`` programs are not included and remain
+subject to StarTech's own license terms.

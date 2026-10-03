@@ -1,30 +1,58 @@
-API reference
+API Reference
 =============
 
-The public API lives in :mod:`st_uhubm`; the implementation is in
-:mod:`st_uhubm.cli_backend`.
+Hub management
+--------------
 
-Hubs and the manager
---------------------
+HubManager
+~~~~~~~~~~
 
-.. autoclass:: st_uhubm.cli_backend.HubManager
+.. autoclass:: st_uhubm.HubManager
    :members:
+   :undoc-members:
+   :show-inheritance:
 
-.. autoclass:: st_uhubm.cli_backend.Hub
+Hub
+~~~
+
+.. autoclass:: st_uhubm.Hub
    :members:
+   :undoc-members:
+   :show-inheritance:
+
+Discovery
+~~~~~~~~~
+
+.. autofunction:: st_uhubm.discover
+
+.. autofunction:: st_uhubm.default_binary
+
+Device identification
+---------------------
+
+IdentifiedDevice
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: st_uhubm.IdentifiedDevice
+   :members:
+   :undoc-members:
+
+identify_devices
+~~~~~~~~~~~~~~~~
+
+.. autofunction:: st_uhubm.identify_devices
 
 Parsers
 -------
 
-.. autofunction:: st_uhubm.cli_backend.parse_query_all
-.. autofunction:: st_uhubm.cli_backend.parse_hub_info
-.. autofunction:: st_uhubm.cli_backend.discover
+.. autofunction:: st_uhubm.parse_query_all
+
+.. autofunction:: st_uhubm.parse_hub_info
 
 Errors
 ------
 
 .. automodule:: st_uhubm.errors
    :members:
-
-.. autoclass:: st_uhubm.cli_backend.ManagedHubAttachmentError
-   :members:
+   :undoc-members:
+   :show-inheritance:
