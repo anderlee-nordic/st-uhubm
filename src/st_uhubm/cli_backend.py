@@ -86,6 +86,10 @@ def parse_hub_info(
 ) -> tuple[int, dict[int, bool], str, str, str]:
     """Parse output from a hub information query.
 
+    Supports both formats:
+    - Comma-separated (x86 cusbi): FFFFFFFF,7,v04,<serial>,<model>
+    - Compact (ARM cusba): FFFFFFFF07v04
+
     Returns:
         ``(n_ports, states, firmware, serial, model)``.
 
@@ -93,6 +97,31 @@ def parse_hub_info(
         HubParseError: If the output cannot be parsed.
     """
     raw = raw.strip()
+
+    # Detect compact format (ARM cusba): no commas
+    if "," not in raw:
+        try:
+            # Compact format: 8-char hex + 2-char decimal + firmware
+            hex_states = raw[:8]
+            n_ports = int(raw[8:10])
+            firmware = raw[10:].strip() or "?"
+
+            value = int.from_bytes(
+                bytes.fromhex(hex_states),
+                "little",
+            )
+            states = {
+                port: bool(value & (1 << (port - 1)))
+                for port in range(1, n_ports + 1)
+            }
+
+            return n_ports, states, firmware, "?", "?"
+        except (ValueError, IndexError) as exc:
+            raise HubParseError(
+                f"could not parse hub info: {raw!r}"
+            ) from exc
+
+    # Comma-separated format (x86 cusbi)
     fields = raw.split(",")
 
     try:

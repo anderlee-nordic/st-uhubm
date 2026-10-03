@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "st-uhubm"
-version = "1.0.2"
+version = "1.0.3"
 description = "An unofficial toolset for controlling StarTech Managed Industrial USB Hubs on Linux."
 readme = "README.md"
 requires-python = ">=3.10"
