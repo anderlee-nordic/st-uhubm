@@ -7,14 +7,16 @@ Includes a Python library, command-line tool, and web GUI.
 
 Supported hubs:
 
-- `5G7AINDRM-USB-A-HUB` — 7 ports
-- `5G4AINDRM-USB-A-HUB` — 4 ports
+- `5G7AINDRM-USB-A-HUB` (7 ports)
+- `5G4AINDRM-USB-A-HUB` (4 ports)
 - Firmware v04 or newer
 
 Supported device identification:
 
 - SEGGER J-Link
 - Nordic Power Profiler Kit II (PPK2)
+
+Full documentation: https://st-uhubm.readthedocs.io/
 
 > This project is not affiliated with, endorsed by, or supported by
 > StarTech.com.
@@ -110,10 +112,8 @@ seven-port hubs and associates identified devices with managed ports.
 ## Permissions
 
 The StarTech control program normally requires permission to access the hub's
-control device, such as `/dev/ttyUSB0`.
-
-By default, `st-uhubm` runs the program through `sudo`. To run without `sudo`,
-grant the user access to the device.
+control device, such as `/dev/ttyUSB0`. By default, `st-uhubm` runs the program
+through `sudo`. To run without `sudo`, grant the user access to the device.
 
 ## License
 

@@ -11,7 +11,7 @@ copyright = "2026, Ander Lee"
 try:
     release = package_version("st-uhubm")
 except PackageNotFoundError:
-    release = "1.0.0"
+    release = "0.0.0+unknown"
 
 version = ".".join(release.split(".")[:2])
 
